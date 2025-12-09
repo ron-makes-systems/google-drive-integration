@@ -1,0 +1,60 @@
+{
+  "name": "your-connector",
+  "version": "1.0.0",
+  "repository": "git@gitlab.com:fibery/your-connector.git",
+  "main": "src/index.ts",
+  "author": "Fibery",
+  "private": true,
+  "module": "index.js",
+  "engines": {
+    "node": "24.x"
+  },
+  "type": "module",
+  "scripts": {
+    "clean": "rimraf build",
+    "build": "tsc",
+    "postbuild": "cp -R ./src/public build",
+    "prestart": "pnpm clean && pnpm build",
+    "start": "node ./build/index.js",
+    "lint": "eslint . --max-warnings=0 --quiet",
+    "prepare": "husky",
+    "pre-commit": "pnpm lint-staged",
+    "pretest": "pnpm build",
+    "test": "vitest run",
+    "test:coverage": "vitest run --coverage"
+  },
+  "dependencies": {
+    "@fibery/correlation-id": "5.0.1",
+    "@fibery/vizydrop-logger": "3.4.0",
+    "body-parser": "2.2.1",
+    "dotenv": "17.2.3",
+    "envalid": "8.1.1",
+    "express": "5.2.1",
+    "husky": "9.1.7",
+    "p-limit": "7.2.0",
+    "rimraf": "6.1.2"
+  },
+  "devDependencies": {
+    "@eslint/eslintrc": "^3.3.3",
+    "@eslint/js": "^9.39.1",
+    "@types/body-parser": "1.19.6",
+    "@types/express": "5.0.6",
+    "@types/node": "24.10.1",
+    "@typescript-eslint/eslint-plugin": "8.48.1",
+    "@typescript-eslint/parser": "8.48.1",
+    "@vitest/coverage-v8": "4.0.15",
+    "eslint": "9.39.1",
+    "eslint-config-prettier": "10.1.8",
+    "eslint-plugin-n": "^17.23.1",
+    "eslint-plugin-prettier": "5.5.4",
+    "globals": "^16.5.0",
+    "lint-staged": "16.2.7",
+    "nock": "14.0.10",
+    "prettier": "3.7.4",
+    "typescript": "5.9.3",
+    "vitest": "4.0.15"
+  },
+  "lint-staged": {
+    "src/**/*.*": "prettier src --config .prettierrc.json --write"
+  }
+}
