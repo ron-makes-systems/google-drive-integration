@@ -7,6 +7,8 @@ import {DatalistRequestBody, GetDataRequestBody, GetSynchronizerSchemaRequestBod
 import {getSchema} from "../synchronizer/schemaProvider.js";
 import {getData} from "../synchronizer/dataProvider.js";
 import {SynchronizerData} from "../types/types.synchronizerData.js";
+import {createGoogleDriveApi} from "../api/googleDrive.js";
+import {SynchronizerFilter} from "../types/types.synchronizerConfig.js";
 
 export const createSynchronizerRoutes = () => {
   const router = express.Router();
@@ -33,7 +35,7 @@ export const createSynchronizerRoutes = () => {
 
   router.post(
     "/datalist",
-    asyncWrap(async (req: Request<unknown, unknown, DatalistRequestBody>, _res) => {
+    asyncWrap(async (req: Request<unknown, unknown, DatalistRequestBody>, res) => {
       const {account, field} = req.body;
 
       if (!account) {
@@ -44,8 +46,32 @@ export const createSynchronizerRoutes = () => {
         throw new ValidationError(`"field" is missing`);
       }
 
-      // your-connector: implement datalist endopint here
-      throw new ValidationError("datalist is not implemented");
+      // Handle drive selection datalist
+      if (field === SynchronizerFilter.DriveIds) {
+        const api = createGoogleDriveApi(account);
+        const items: Array<{title: string; value: string}> = [];
+
+        // Add My Drive with "root" as value to match how files reference it
+        items.push({title: "My Drive", value: "root"});
+
+        // Add Shared with me virtual drive
+        items.push({title: "Shared with me", value: "shared_with_me"});
+
+        // Add shared drives
+        let pageToken: string | undefined;
+        do {
+          const result = await api.listSharedDrives({pageToken});
+          for (const drive of result.drives) {
+            items.push({title: drive.name, value: drive.id});
+          }
+          pageToken = result.nextPageToken;
+        } while (pageToken);
+
+        res.json({items});
+        return;
+      }
+
+      throw new ValidationError(`Unknown datalist field: ${field}`);
     }),
   );
 

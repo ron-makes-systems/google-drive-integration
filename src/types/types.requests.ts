@@ -13,7 +13,7 @@ export type GetSynchronizerSchemaRequestBody = {
 };
 
 export type SynchronizerDataFilter = {
-  // your-connector: populate sync data filters here
+  driveIds?: string[];
 };
 
 export type GetDataRequestBody = {

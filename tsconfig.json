@@ -11,7 +11,8 @@
     "outDir": "build",
     "esModuleInterop": true,
     "noImplicitReturns": true,
-    "noImplicitThis": true
+    "noImplicitThis": true,
+    "skipLibCheck": true
   },
   "include": ["./src/**/*", "./@types/**/*"]
 }

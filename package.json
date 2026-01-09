@@ -1,7 +1,7 @@
 {
-  "name": "your-connector",
+  "name": "google-drive-connector",
   "version": "1.0.0",
-  "repository": "git@gitlab.com:fibery/your-connector.git",
+  "repository": "git@gitlab.com:fibery/google-drive-connector.git",
   "main": "src/index.ts",
   "author": "Fibery",
   "private": true,
@@ -30,7 +30,9 @@
     "dotenv": "17.2.3",
     "envalid": "8.1.1",
     "express": "5.2.1",
+    "googleapis": "^144.0.0",
     "husky": "9.1.7",
+    "lodash": "^4.17.21",
     "p-limit": "7.2.0",
     "rimraf": "6.1.2"
   },
@@ -39,6 +41,7 @@
     "@eslint/js": "^9.39.1",
     "@types/body-parser": "1.19.6",
     "@types/express": "5.0.6",
+    "@types/lodash": "^4.17.13",
     "@types/node": "24.10.1",
     "@typescript-eslint/eslint-plugin": "8.48.1",
     "@typescript-eslint/parser": "8.48.1",

@@ -35,9 +35,9 @@ export type ConnectorConfig = {
   authentication: Array<ConnectorConfigAuthentication>;
   sources: Array<Source>;
   responsibleFor: {
-    userAuthentication: boolean;
-    dataProviding: boolean;
+    userAuthentication?: boolean;
+    dataProviding?: boolean;
     dataSynchronization: boolean;
-    dataImport: boolean;
+    dataImport?: boolean;
   };
 };

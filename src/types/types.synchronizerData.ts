@@ -22,7 +22,51 @@ export type GetDataFn<T, P = unknown> = (p: {
 }) => Promise<SynchronizerData<T, P>>;
 
 export type PaginationConfig = {
-  cursor?: string;
+  pageToken?: string;
 };
 
-// your-connector: define synchronized types
+// Synchronized entity types for Google Drive
+export interface SynchronizedDrive {
+  id: string;
+  name: string;
+  type: string; // "Personal" or "Shared"
+  colorRgb?: string;
+  createdTime?: string;
+  webViewLink?: string;
+}
+
+export interface SynchronizedFolder {
+  id: string;
+  name: string;
+  parentId?: string;
+  driveId?: string;
+  createdTime?: string;
+  modifiedTime?: string;
+  webViewLink?: string;
+}
+
+export interface SynchronizedFile {
+  id: string;
+  name: string;
+  mimeType: string;
+  mimeTypeCategory?: string;
+  description?: string;
+  size?: number;
+  parentId?: string;
+  driveId?: string;
+  ownerId?: string;
+  lastModifyingUserId?: string;
+  createdTime?: string;
+  modifiedTime?: string;
+  webViewLink?: string;
+  iconLink?: string;
+  thumbnailLink?: string;
+  content?: string;
+}
+
+export interface SynchronizedUser {
+  id: string;
+  name: string;
+  email?: string;
+  photoUrl?: string;
+}

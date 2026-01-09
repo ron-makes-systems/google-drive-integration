@@ -1,3 +1,7 @@
+// Set test environment variables before any app imports
+process.env.GOOGLE_CLIENT_ID = "test_client_id";
+process.env.GOOGLE_CLIENT_SECRET = "test_client_secret";
+
 import nock from "nock";
 import {afterAll, afterEach, beforeAll} from "vitest";
 

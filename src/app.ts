@@ -8,6 +8,7 @@ import {getConnectorConfig} from "./connectorConfig.js";
 import {errorHandlingMiddleware} from "./errors/errorMiddleware.js";
 import {createValidateRouter} from "./routes/validation.js";
 import {createSynchronizerRoutes} from "./routes/synchronizerRoutes.js";
+import {createOAuth2Routes} from "./routes/oauth2Routes.js";
 
 const currentDirectory = path.dirname(fileURLToPath(import.meta.url));
 
@@ -29,6 +30,9 @@ export const createApp = () => {
   app.get("/logo", (req, res) => {
     return res.sendFile(path.resolve(currentDirectory, `./public/logo.svg`));
   });
+
+  // OAuth2 routes for authentication
+  app.use("/oauth2", createOAuth2Routes());
 
   app.use("/validate", createValidateRouter());
 

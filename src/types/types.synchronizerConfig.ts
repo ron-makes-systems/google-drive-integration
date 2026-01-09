@@ -23,9 +23,12 @@ export type SynchronizerConfig = {
 };
 
 export enum SynchronizerType {
-  // your-connector: populate sync types here
+  Drive = "drive",
+  Folder = "folder",
+  File = "file",
+  User = "user",
 }
 
 export enum SynchronizerFilter {
-  // your-connector: populate sync filters here
+  DriveIds = "driveIds",
 }

@@ -4,10 +4,17 @@ import {SynchronizerType} from "../types/types.synchronizerConfig.js";
 import {GetDataFn, PaginationConfig, SynchronizerData} from "../types/types.synchronizerData.js";
 import {IntegrationAccount} from "../types/types.authentication.js";
 import {SynchronizerDataFilter} from "../types/types.requests.js";
+import {getDrives} from "./dataProviders/drive.js";
+import {getFolders} from "./dataProviders/folder.js";
+import {getFiles} from "./dataProviders/file.js";
+import {getUsers} from "./dataProviders/user.js";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const dataProviders: Record<SynchronizerType, GetDataFn<unknown, any>> = {
-  // your-connector: populate data providers per type here
+  [SynchronizerType.Drive]: getDrives,
+  [SynchronizerType.Folder]: getFolders,
+  [SynchronizerType.File]: getFiles,
+  [SynchronizerType.User]: getUsers,
 };
 
 export const getData = async ({
