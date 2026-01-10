@@ -31,3 +31,11 @@ export type DatalistRequestBody = {
   field?: string;
   dependsOn?: Record<string, unknown>;
 };
+
+export type ResourceRequestBody = {
+  account?: IntegrationAccount;
+  params?: {
+    type?: string;
+    fileId?: string;
+  };
+};

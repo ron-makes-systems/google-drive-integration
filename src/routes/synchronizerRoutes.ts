@@ -3,7 +3,13 @@ import {asyncWrap} from "../utils/asyncWrap.js";
 import {ValidationError} from "../errors/errors.js";
 import {SynchronizerSchema} from "../types/types.synchronizerSchema.js";
 import {getSynchronizerConfig} from "../synchronizer/configProvider.js";
-import {DatalistRequestBody, GetDataRequestBody, GetSynchronizerSchemaRequestBody} from "../types/types.requests.js";
+import {
+  DatalistRequestBody,
+  GetDataRequestBody,
+  GetSynchronizerSchemaRequestBody,
+  ResourceRequestBody,
+} from "../types/types.requests.js";
+import {streamResource} from "../synchronizer/resourceProvider.js";
 import {getSchema} from "../synchronizer/schemaProvider.js";
 import {getData} from "../synchronizer/dataProvider.js";
 import {SynchronizerData} from "../types/types.synchronizerData.js";
@@ -97,6 +103,22 @@ export const createSynchronizerRoutes = () => {
           pagination,
         }),
       );
+    }),
+  );
+
+  router.post(
+    "/resource",
+    asyncWrap(async (req: Request<unknown, unknown, ResourceRequestBody>, res) => {
+      const {account, params} = req.body;
+
+      if (!account) {
+        throw new ValidationError(`"account" is missing`);
+      }
+      if (!params?.fileId) {
+        throw new ValidationError(`"fileId" is missing`);
+      }
+
+      await streamResource({out: res, account, fileId: params.fileId});
     }),
   );
 

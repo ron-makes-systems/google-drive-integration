@@ -119,6 +119,7 @@ const schema: SynchronizerSchema = {
     iconLink: {name: "Icon URL", type: "text", subType: "url"},
     thumbnailLink: {name: "Thumbnail URL", type: "text", subType: "url"},
     content: {name: "Content", type: "text", subType: "md"},
+    file: {name: "File", type: "array[text]", subType: "file"},
   },
 
   [SynchronizerType.User]: {

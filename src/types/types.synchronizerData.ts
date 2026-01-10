@@ -23,6 +23,7 @@ export type GetDataFn<T, P = unknown> = (p: {
 
 export type PaginationConfig = {
   pageToken?: string;
+  cumulativeSizeBytes?: number; // Track size across pages for quota enforcement
 };
 
 // Synchronized entity types for Google Drive
@@ -62,6 +63,7 @@ export interface SynchronizedFile {
   iconLink?: string;
   thumbnailLink?: string;
   content?: string;
+  file?: string[];
 }
 
 export interface SynchronizedUser {

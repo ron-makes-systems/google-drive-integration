@@ -213,12 +213,24 @@ export const createGoogleDriveApi = (account: IntegrationAccount) => {
   };
 
   // Stream file to response
-  const streamFile = async (out: Response, fileId: string, fileName: string): Promise<void> => {
+  const streamFile = async (
+    out: Response,
+    fileId: string,
+    fileName: string,
+    mimeType?: string,
+    size?: string,
+  ): Promise<void> => {
     const response = await call(() =>
       drive.files.get({fileId, alt: "media", supportsAllDrives: true}, {responseType: "stream"}),
     );
 
     out.setHeader("Content-Disposition", `attachment; filename="${fileName}"`);
+    if (mimeType) {
+      out.setHeader("Content-Type", mimeType);
+    }
+    if (size) {
+      out.setHeader("Content-Length", size);
+    }
 
     return new Promise((resolve, reject) => {
       (response.data as NodeJS.ReadableStream).pipe(out).on("finish", resolve).on("error", reject);
@@ -237,6 +249,18 @@ export const createGoogleDriveApi = (account: IntegrationAccount) => {
     return response.data.permissions || [];
   };
 
+  // Get file metadata by ID
+  const getFileMetadata = async (fileId: string): Promise<GoogleFileMetadata> => {
+    const response = await call(() =>
+      drive.files.get({
+        fileId,
+        supportsAllDrives: true,
+        fields: "id, name, mimeType, size",
+      }),
+    );
+    return response.data as GoogleFileMetadata;
+  };
+
   return {
     validate,
     getCurrentUser,
@@ -249,6 +273,7 @@ export const createGoogleDriveApi = (account: IntegrationAccount) => {
     downloadFile,
     streamFile,
     getFilePermissions,
+    getFileMetadata,
   };
 };
 

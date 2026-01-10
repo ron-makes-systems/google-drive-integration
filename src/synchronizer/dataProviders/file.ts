@@ -3,6 +3,7 @@ import {GetDataFn, PaginationConfig, SynchronizedFile} from "../../types/types.s
 import {createGoogleDriveApi, GOOGLE_WORKSPACE_MIME_TYPES, EXPORTABLE_MIME_TYPES} from "../../api/googleDrive.js";
 import {config} from "../../config.js";
 import {GoogleFileMetadata} from "../../types/types.googleDrive.js";
+import {AppError} from "../../errors/errors.js";
 
 const SHARED_WITH_ME_DRIVE_ID = "shared_with_me";
 
@@ -17,6 +18,11 @@ const getMimeTypeCategory = (mimeType: string): string => {
   if (mimeType.startsWith("audio/")) return "Audio";
   if (mimeType.includes("zip") || mimeType.includes("tar") || mimeType.includes("compressed")) return "Archive";
   return "Other";
+};
+
+// Check if file is downloadable (not a Google Workspace file that requires export)
+const isDownloadable = (mimeType: string): boolean => {
+  return !EXPORTABLE_MIME_TYPES.includes(mimeType as (typeof EXPORTABLE_MIME_TYPES)[number]);
 };
 
 const transform = (file: GoogleFileMetadata, content?: string, overrideDriveId?: string): SynchronizedFile => ({
@@ -36,6 +42,8 @@ const transform = (file: GoogleFileMetadata, content?: string, overrideDriveId?:
   iconLink: file.iconLink,
   thumbnailLink: file.thumbnailLink,
   content: content || undefined,
+  // Only provide file download URL for binary files (not Google Workspace files)
+  file: isDownloadable(file.mimeType) ? [`app://resource?type=file&fileId=${file.id}`] : undefined,
 });
 
 // Content extraction with size limit (10MB for Google Workspace files)
@@ -119,6 +127,23 @@ export const getFiles: GetDataFn<SynchronizedFile, PaginationConfig> = async ({
     nextPageToken = result.nextPageToken;
   }
 
+  // Calculate size for this page and add to cumulative total
+  let cumulativeSizeBytes = pagination?.cumulativeSizeBytes || 0;
+  for (const {file} of filesToProcess) {
+    cumulativeSizeBytes += file.size ? parseInt(file.size, 10) : 0;
+  }
+
+  // Check quota limit
+  if (cumulativeSizeBytes > config.storageQuotaBytes) {
+    const totalGB = (cumulativeSizeBytes / 1024 ** 3).toFixed(2);
+    const limitGB = (config.storageQuotaBytes / 1024 ** 3).toFixed(0);
+    throw new AppError({
+      statusCode: 400,
+      message: `This sync contains ${totalGB} GB of files, which exceeds the ${limitGB} GB limit for your plan. Please select fewer drives or upgrade your plan.`,
+      tryLater: false,
+    });
+  }
+
   // Extract content for Google Workspace files (in parallel with limit)
   const items = await Promise.all(
     filesToProcess.map(async ({file, overrideDriveId}) => {
@@ -132,7 +157,10 @@ export const getFiles: GetDataFn<SynchronizedFile, PaginationConfig> = async ({
     synchronizationType: _.isEmpty(lastSynchronizedAt) ? "full" : "delta",
     pagination: {
       hasNext: !_.isEmpty(nextPageToken),
-      nextPageConfig: {pageToken: nextPageToken},
+      nextPageConfig: {
+        pageToken: nextPageToken,
+        cumulativeSizeBytes, // Pass to next page for quota tracking
+      },
     },
   };
 };

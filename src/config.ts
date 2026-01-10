@@ -10,6 +10,7 @@ export const config = {
   pageSize: env["PAGE_SIZE"],
   maxConcurrentConnections: env["MAX_CONCURRENT_CONNECTIONS"],
   apiVersion: env["API_VERSION"],
+  storageQuotaBytes: env["STORAGE_QUOTA_BYTES"],
   google: {
     clientId: env["GOOGLE_CLIENT_ID"],
     clientSecret: env["GOOGLE_CLIENT_SECRET"],
