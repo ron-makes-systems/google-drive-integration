@@ -117,7 +117,7 @@ const schema: SynchronizerSchema = {
     modifiedTime: {name: "Modified", type: "date"},
     webViewLink: {name: "URL", type: "text", subType: "url"},
     iconLink: {name: "Icon URL", type: "text", subType: "url"},
-    thumbnailLink: {name: "Thumbnail URL", type: "text", subType: "url"},
+    thumbnailLink: {name: "Thumbnail", type: "text", subType: "avatar"},
     content: {name: "Content", type: "text", subType: "md"},
     embed: {name: "Embed", type: "text", subType: "html"},
     // file field disabled due to Fibery timeout issues with large files (>60s timeout)
