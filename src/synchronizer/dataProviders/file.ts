@@ -34,6 +34,7 @@ const generateEmbedHtml = (fileId: string): string => {
 
 const transform = (file: GoogleFileMetadata, content?: string, overrideDriveId?: string): SynchronizedFile => ({
   id: file.id,
+  googleId: file.id,
   name: file.name,
   mimeType: file.mimeType,
   mimeTypeCategory: getMimeTypeCategory(file.mimeType),

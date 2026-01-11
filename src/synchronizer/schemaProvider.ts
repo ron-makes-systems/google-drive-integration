@@ -5,6 +5,7 @@ import {IntegrationAccount} from "../types/types.authentication.js";
 const schema: SynchronizerSchema = {
   [SynchronizerType.Drive]: {
     id: {name: "Id", type: "id"},
+    googleId: {name: "Google ID", type: "text"},
     name: {name: "Name", type: "text", subType: "title"},
     type: {
       name: "Type",
@@ -19,6 +20,7 @@ const schema: SynchronizerSchema = {
 
   [SynchronizerType.Folder]: {
     id: {name: "Id", type: "id"},
+    googleId: {name: "Google ID", type: "text"},
     name: {name: "Name", type: "text", subType: "title"},
     parentId: {
       name: "Parent Folder ID",
@@ -49,6 +51,7 @@ const schema: SynchronizerSchema = {
 
   [SynchronizerType.File]: {
     id: {name: "Id", type: "id"},
+    googleId: {name: "Google ID", type: "text"},
     name: {name: "Name", type: "text", subType: "title"},
     mimeType: {name: "MIME Type", type: "text"},
     mimeTypeCategory: {

@@ -8,6 +8,7 @@ const SHARED_WITH_ME_DRIVE_ID = "shared_with_me";
 
 const transform = (folder: GoogleFileMetadata, overrideDriveId?: string): SynchronizedFolder => ({
   id: folder.id,
+  googleId: folder.id,
   name: folder.name,
   parentId: folder.parents?.[0],
   driveId: overrideDriveId || folder.driveId || "root",

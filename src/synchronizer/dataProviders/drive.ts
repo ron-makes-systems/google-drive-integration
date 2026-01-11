@@ -33,6 +33,7 @@ const transform = (drive: {
   createdTime?: string;
 }): SynchronizedDrive => ({
   id: drive.id,
+  googleId: drive.id,
   name: drive.name,
   type: getDriveTypeLabel(drive.type),
   colorRgb: drive.colorRgb,

@@ -32,6 +32,7 @@ export type PaginationConfig = {
 // Synchronized entity types for Google Drive
 export interface SynchronizedDrive {
   id: string;
+  googleId: string;
   name: string;
   type: string; // "Personal" or "Shared"
   colorRgb?: string;
@@ -41,6 +42,7 @@ export interface SynchronizedDrive {
 
 export interface SynchronizedFolder {
   id: string;
+  googleId: string;
   name: string;
   parentId?: string;
   driveId?: string;
@@ -51,6 +53,7 @@ export interface SynchronizedFolder {
 
 export interface SynchronizedFile {
   id: string;
+  googleId: string;
   name: string;
   mimeType: string;
   mimeTypeCategory?: string;
