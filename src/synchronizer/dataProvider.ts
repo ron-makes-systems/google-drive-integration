@@ -8,6 +8,8 @@ import {getDrives} from "./dataProviders/drive.js";
 import {getFolders} from "./dataProviders/folder.js";
 import {getFiles} from "./dataProviders/file.js";
 import {getUsers} from "./dataProviders/user.js";
+import {getRoles} from "./dataProviders/role.js";
+import {getPermissions} from "./dataProviders/permission.js";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const dataProviders: Record<SynchronizerType, GetDataFn<unknown, any>> = {
@@ -15,6 +17,8 @@ const dataProviders: Record<SynchronizerType, GetDataFn<unknown, any>> = {
   [SynchronizerType.Folder]: getFolders,
   [SynchronizerType.File]: getFiles,
   [SynchronizerType.User]: getUsers,
+  [SynchronizerType.Role]: getRoles,
+  [SynchronizerType.Permission]: getPermissions,
 };
 
 export const getData = async ({

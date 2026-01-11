@@ -130,6 +130,99 @@ const schema: SynchronizerSchema = {
     email: {name: "Email", type: "text", subType: "email"},
     photoUrl: {name: "Photo", type: "text", subType: "avatar"},
   },
+
+  [SynchronizerType.Role]: {
+    id: {name: "Id", type: "id"},
+    name: {name: "Name", type: "text", subType: "title"},
+    description: {name: "Description", type: "text"},
+    level: {name: "Level", type: "number", subType: "integer"},
+    canEdit: {name: "Can Edit", type: "text", subType: "boolean"},
+    canComment: {name: "Can Comment", type: "text", subType: "boolean"},
+    canShare: {name: "Can Share", type: "text", subType: "boolean"},
+  },
+
+  [SynchronizerType.Permission]: {
+    id: {name: "Id", type: "id"},
+    name: {name: "Name", type: "text", subType: "title"},
+    resourceId: {name: "Resource ID", type: "text"},
+    resourceType: {
+      name: "Resource Type",
+      type: "text",
+      subType: "single-select",
+      options: [{name: "drive"}, {name: "folder"}, {name: "file"}],
+    },
+    driveId: {
+      name: "Drive ID",
+      type: "text",
+      relation: {
+        cardinality: "many-to-one",
+        name: "Drive",
+        targetName: "Permissions",
+        targetType: SynchronizerType.Drive,
+        targetFieldId: "id",
+      },
+    },
+    folderId: {
+      name: "Folder ID",
+      type: "text",
+      relation: {
+        cardinality: "many-to-one",
+        name: "Folder",
+        targetName: "Permissions",
+        targetType: SynchronizerType.Folder,
+        targetFieldId: "id",
+      },
+    },
+    fileId: {
+      name: "File ID",
+      type: "text",
+      relation: {
+        cardinality: "many-to-one",
+        name: "File",
+        targetName: "Permissions",
+        targetType: SynchronizerType.File,
+        targetFieldId: "id",
+      },
+    },
+    userId: {
+      name: "User ID",
+      type: "text",
+      relation: {
+        cardinality: "many-to-one",
+        name: "User",
+        targetName: "Permissions",
+        targetType: SynchronizerType.User,
+        targetFieldId: "id",
+      },
+    },
+    roleId: {
+      name: "Role ID",
+      type: "text",
+      relation: {
+        cardinality: "many-to-one",
+        name: "Role",
+        targetName: "Permissions",
+        targetType: SynchronizerType.Role,
+        targetFieldId: "id",
+      },
+    },
+    type: {
+      name: "Type",
+      type: "text",
+      subType: "single-select",
+      options: [{name: "user"}, {name: "group"}, {name: "domain"}, {name: "anyone"}],
+    },
+    email: {name: "Email", type: "text", subType: "email"},
+    inherited: {name: "Inherited", type: "text", subType: "boolean"},
+    permissionType: {
+      name: "Permission Type",
+      type: "text",
+      subType: "single-select",
+      options: [{name: "member"}, {name: "file"}],
+    },
+    inheritedFrom: {name: "Inherited From", type: "text"},
+    expirationTime: {name: "Expires", type: "date"},
+  },
 };
 
 export const getSchema = async (

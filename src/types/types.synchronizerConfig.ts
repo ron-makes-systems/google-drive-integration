@@ -27,6 +27,8 @@ export enum SynchronizerType {
   Folder = "folder",
   File = "file",
   User = "user",
+  Role = "role",
+  Permission = "permission",
 }
 
 export enum SynchronizerFilter {

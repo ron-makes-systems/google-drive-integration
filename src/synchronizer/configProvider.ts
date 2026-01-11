@@ -25,6 +25,16 @@ export const getSynchronizerConfig = (): SynchronizerConfig => {
         default: true,
         isUser: true,
       },
+      {
+        id: SynchronizerType.Role,
+        name: "Role",
+        default: true,
+      },
+      {
+        id: SynchronizerType.Permission,
+        name: "Permission",
+        default: true,
+      },
     ],
     filters: [
       {

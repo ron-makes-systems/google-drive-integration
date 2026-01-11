@@ -76,3 +76,31 @@ export interface SynchronizedUser {
   email?: string;
   photoUrl?: string;
 }
+
+export interface SynchronizedRole {
+  id: string;
+  name: string;
+  description: string;
+  level: number;
+  canEdit: string; // "true" or "false" - Fibery boolean as text
+  canComment: string;
+  canShare: string;
+}
+
+export interface SynchronizedPermission {
+  id: string;
+  name: string;
+  resourceId: string;
+  resourceType: "drive" | "folder" | "file";
+  driveId?: string;
+  folderId?: string;
+  fileId?: string;
+  userId?: string;
+  roleId: string;
+  type: string; // "user" | "group" | "domain" | "anyone"
+  email?: string;
+  inherited: string; // "true" or "false" - Fibery boolean as text
+  permissionType?: string; // "member" or "file"
+  inheritedFrom?: string;
+  expirationTime?: string;
+}

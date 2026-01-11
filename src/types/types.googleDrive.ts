@@ -37,6 +37,12 @@ export interface GoogleUser {
   me?: boolean;
 }
 
+export interface GooglePermissionDetail {
+  permissionType: "member" | "file";
+  inherited: boolean;
+  inheritedFrom?: string;
+}
+
 export interface GooglePermission {
   id: string;
   type: "user" | "group" | "domain" | "anyone";
@@ -44,4 +50,6 @@ export interface GooglePermission {
   emailAddress?: string;
   displayName?: string;
   photoLink?: string;
+  expirationTime?: string;
+  permissionDetails?: GooglePermissionDetail[];
 }

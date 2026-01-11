@@ -4,7 +4,7 @@ import {Response} from "express";
 import {IntegrationAccount} from "../types/types.authentication.js";
 import {config} from "../config.js";
 import {AppError} from "../errors/errors.js";
-import {GoogleDriveMetadata, GoogleFileMetadata, GoogleUser} from "../types/types.googleDrive.js";
+import {GoogleDriveMetadata, GoogleFileMetadata, GooglePermission, GoogleUser} from "../types/types.googleDrive.js";
 
 const limit = pLimit(config.maxConcurrentConnections);
 
@@ -270,6 +270,32 @@ export const createGoogleDriveApi = (account: IntegrationAccount) => {
     return response.data as GoogleFileMetadata;
   };
 
+  // List permissions for a file or drive
+  const listPermissions = async ({
+    fileId,
+    pageToken,
+    pageSize = 100,
+  }: {
+    fileId: string;
+    pageToken?: string;
+    pageSize?: number;
+  }): Promise<{permissions: GooglePermission[]; nextPageToken?: string}> => {
+    const response = await call(() =>
+      drive.permissions.list({
+        fileId,
+        pageToken,
+        pageSize,
+        supportsAllDrives: true,
+        fields:
+          "nextPageToken, permissions(id, type, role, emailAddress, displayName, photoLink, expirationTime, permissionDetails)",
+      }),
+    );
+    return {
+      permissions: (response.data.permissions || []) as GooglePermission[],
+      nextPageToken: response.data.nextPageToken || undefined,
+    };
+  };
+
   return {
     validate,
     getCurrentUser,
@@ -283,6 +309,7 @@ export const createGoogleDriveApi = (account: IntegrationAccount) => {
     streamFile,
     getFilePermissions,
     getFileMetadata,
+    listPermissions,
   };
 };
 
