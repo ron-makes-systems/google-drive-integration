@@ -198,9 +198,18 @@ export const createGoogleDriveApi = (account: IntegrationAccount) => {
       );
       return Buffer.from(response.data as ArrayBuffer).toString("utf-8");
     } catch (error) {
-      // Content too large or export not supported
+      // Check if it's a "file too large" error (Google's 10MB export limit)
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      const isTooLarge = errorMessage.includes("too large") || errorMessage.includes("exportSizeLimitExceeded");
+
+      if (isTooLarge) {
+        console.warn(`File ${fileId} exceeds Google's 10MB export limit`);
+        return "[Content unavailable: This file exceeds Google's 10MB export limit for Google Docs/Sheets/Slides]";
+      }
+
+      // Other export errors
       console.warn(`Failed to export content for file ${fileId}:`, error);
-      return "";
+      return "[Content unavailable: Failed to export file content]";
     }
   };
 

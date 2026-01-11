@@ -40,7 +40,7 @@ const transform = (drive: {
   webViewLink: getDriveWebLink(drive.id, drive.type),
 });
 
-export const getDrives: GetDataFn<SynchronizedDrive, PaginationConfig> = async ({account, pagination}) => {
+export const getDrives: GetDataFn<SynchronizedDrive, PaginationConfig> = async ({account, filter, pagination}) => {
   const api = createGoogleDriveApi(account);
   const items: SynchronizedDrive[] = [];
 
@@ -84,8 +84,12 @@ export const getDrives: GetDataFn<SynchronizedDrive, PaginationConfig> = async (
     );
   }
 
+  // Filter drives based on selected driveIds
+  const driveIds = filter?.driveIds || [];
+  const filteredItems = driveIds.length > 0 ? items.filter((item) => driveIds.includes(item.id)) : items;
+
   return {
-    items,
+    items: filteredItems,
     synchronizationType: "full", // Drives don't have modifiedTime for delta sync
     pagination: {
       hasNext: !_.isEmpty(result.nextPageToken),

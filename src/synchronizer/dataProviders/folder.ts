@@ -16,6 +16,27 @@ const transform = (folder: GoogleFileMetadata, overrideDriveId?: string): Synchr
   webViewLink: folder.webViewLink,
 });
 
+// Build list of sources to query based on filter
+const buildSourcesList = (driveIds: string[]): string[] => {
+  if (driveIds.length === 0) {
+    return ["all"];
+  }
+
+  const sources: string[] = [];
+  if (driveIds.includes("root")) {
+    sources.push("root");
+  }
+  if (driveIds.includes(SHARED_WITH_ME_DRIVE_ID)) {
+    sources.push(SHARED_WITH_ME_DRIVE_ID);
+  }
+  for (const id of driveIds) {
+    if (id !== "root" && id !== SHARED_WITH_ME_DRIVE_ID) {
+      sources.push(id);
+    }
+  }
+  return sources;
+};
+
 export const getFolders: GetDataFn<SynchronizedFolder, PaginationConfig> = async ({
   account,
   filter,
@@ -25,9 +46,10 @@ export const getFolders: GetDataFn<SynchronizedFolder, PaginationConfig> = async
   const api = createGoogleDriveApi(account);
   const driveIds = filter?.driveIds || [];
 
-  // Check if "shared with me" is selected
-  const includeSharedWithMe = driveIds.includes(SHARED_WITH_ME_DRIVE_ID);
-  const otherDriveIds = driveIds.filter((id) => id !== SHARED_WITH_ME_DRIVE_ID);
+  // Build or retrieve sources list for multi-source pagination
+  const sources = pagination?.sources || buildSourcesList(driveIds);
+  const currentSourceIndex = pagination?.currentSourceIndex ?? 0;
+  const currentSource = sources[currentSourceIndex];
 
   // Build base query for folders
   let baseQuery = `mimeType = '${GOOGLE_WORKSPACE_MIME_TYPES.FOLDER}' and trashed = false`;
@@ -38,19 +60,9 @@ export const getFolders: GetDataFn<SynchronizedFolder, PaginationConfig> = async
   const items: SynchronizedFolder[] = [];
   let nextPageToken: string | undefined;
 
-  // If only "shared with me" is selected, query just that
-  if (includeSharedWithMe && otherDriveIds.length === 0) {
-    const query = `${baseQuery} and sharedWithMe = true`;
-    const result = await api.listFiles({
-      query,
-      pageToken: pagination?.pageToken,
-      pageSize: config.pageSize,
-    });
-
-    items.push(...result.files.map((f) => transform(f, SHARED_WITH_ME_DRIVE_ID)));
-    nextPageToken = result.nextPageToken;
-  } else {
-    // Query all accessible folders
+  // Query based on current source
+  if (currentSource === "all") {
+    // Fallback: no filter, query everything
     const result = await api.listFiles({
       query: baseQuery,
       pageToken: pagination?.pageToken,
@@ -58,33 +70,68 @@ export const getFolders: GetDataFn<SynchronizedFolder, PaginationConfig> = async
     });
 
     for (const f of result.files) {
-      // Determine which drive this folder belongs to:
-      // - If folder has a driveId, use that (it's in a shared drive)
-      // - If ownedByMe is false and no driveId, it's shared with the user
-      // - Otherwise it's in My Drive ("root")
       const isSharedWithMe = f.ownedByMe === false && !f.driveId;
-      const folderDriveId = f.driveId || (isSharedWithMe ? SHARED_WITH_ME_DRIVE_ID : "root");
-
-      // Skip if drive filter is active and this folder doesn't match
-      if (driveIds.length > 0) {
-        const matchesFilter = otherDriveIds.includes(folderDriveId) || (includeSharedWithMe && isSharedWithMe);
-        if (!matchesFilter) {
-          continue;
-        }
-      }
-
       items.push(transform(f, isSharedWithMe ? SHARED_WITH_ME_DRIVE_ID : undefined));
     }
-
     nextPageToken = result.nextPageToken;
+  } else if (currentSource === "root") {
+    // My Drive: query folders owned by me
+    const result = await api.listFiles({
+      query: `${baseQuery} and 'me' in owners`,
+      pageToken: pagination?.pageToken,
+      pageSize: config.pageSize,
+    });
+
+    // Post-filter to exclude folders in shared drives
+    for (const f of result.files) {
+      if (!f.driveId) {
+        items.push(transform(f));
+      }
+    }
+    nextPageToken = result.nextPageToken;
+  } else if (currentSource === SHARED_WITH_ME_DRIVE_ID) {
+    // Shared with me: query folders shared with the user
+    const result = await api.listFiles({
+      query: `${baseQuery} and sharedWithMe = true`,
+      pageToken: pagination?.pageToken,
+      pageSize: config.pageSize,
+    });
+
+    items.push(...result.files.map((f) => transform(f, SHARED_WITH_ME_DRIVE_ID)));
+    nextPageToken = result.nextPageToken;
+  } else {
+    // Specific shared drive: use efficient driveId filtering
+    const result = await api.listFiles({
+      query: baseQuery,
+      driveId: currentSource,
+      pageToken: pagination?.pageToken,
+      pageSize: config.pageSize,
+    });
+
+    items.push(...result.files.map((f) => transform(f)));
+    nextPageToken = result.nextPageToken;
+  }
+
+  // Determine next pagination state
+  let hasNext = false;
+  const nextPageConfig: PaginationConfig = {sources};
+
+  if (nextPageToken) {
+    hasNext = true;
+    nextPageConfig.currentSourceIndex = currentSourceIndex;
+    nextPageConfig.pageToken = nextPageToken;
+  } else if (currentSourceIndex < sources.length - 1) {
+    hasNext = true;
+    nextPageConfig.currentSourceIndex = currentSourceIndex + 1;
+    nextPageConfig.pageToken = undefined;
   }
 
   return {
     items,
     synchronizationType: _.isEmpty(lastSynchronizedAt) ? "full" : "delta",
     pagination: {
-      hasNext: !_.isEmpty(nextPageToken),
-      nextPageConfig: {pageToken: nextPageToken},
+      hasNext,
+      nextPageConfig: hasNext ? nextPageConfig : undefined,
     },
   };
 };

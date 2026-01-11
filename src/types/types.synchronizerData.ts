@@ -24,6 +24,9 @@ export type GetDataFn<T, P = unknown> = (p: {
 export type PaginationConfig = {
   pageToken?: string;
   cumulativeSizeBytes?: number; // Track size across pages for quota enforcement
+  // Multi-source pagination: process sources sequentially
+  currentSourceIndex?: number; // Index into the sources array
+  sources?: string[]; // Ordered list of sources: ["root", "shared_with_me", "driveId1", ...]
 };
 
 // Synchronized entity types for Google Drive
@@ -63,6 +66,7 @@ export interface SynchronizedFile {
   iconLink?: string;
   thumbnailLink?: string;
   content?: string;
+  embed?: string;
   file?: string[];
 }
 

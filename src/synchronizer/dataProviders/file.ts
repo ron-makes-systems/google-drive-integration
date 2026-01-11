@@ -21,8 +21,15 @@ const getMimeTypeCategory = (mimeType: string): string => {
 };
 
 // Check if file is downloadable (not a Google Workspace file that requires export)
-const isDownloadable = (mimeType: string): boolean => {
+// Prefixed with _ since file download is disabled due to Fibery timeout, kept for future use
+const _isDownloadable = (mimeType: string): boolean => {
   return !EXPORTABLE_MIME_TYPES.includes(mimeType as (typeof EXPORTABLE_MIME_TYPES)[number]);
+};
+
+// Generate embed HTML for Google Drive file preview
+const generateEmbedHtml = (fileId: string): string => {
+  const embedUrl = `https://drive.google.com/file/d/${fileId}/preview`;
+  return `<div contenteditable="false" data-dynamic-content="true" data-compatible-mode="true" data-url="${embedUrl}">Google Drive File</div>`;
 };
 
 const transform = (file: GoogleFileMetadata, content?: string, overrideDriveId?: string): SynchronizedFile => ({
@@ -42,8 +49,10 @@ const transform = (file: GoogleFileMetadata, content?: string, overrideDriveId?:
   iconLink: file.iconLink,
   thumbnailLink: file.thumbnailLink,
   content: content || undefined,
+  embed: generateEmbedHtml(file.id),
   // Only provide file download URL for binary files (not Google Workspace files)
-  file: isDownloadable(file.mimeType) ? [`app://resource?type=file&fileId=${file.id}`] : undefined,
+  // File field disabled due to Fibery timeout issues with large files (>60s timeout)
+  // file: _isDownloadable(file.mimeType) ? [`app://resource?type=file&fileId=${file.id}`] : undefined,
 });
 
 // Content extraction with size limit (10MB for Google Workspace files)
@@ -58,10 +67,37 @@ const extractContent = async (
   try {
     const content = await api.exportFileContent(file.id, file.mimeType);
     // Truncate extremely large content (>100KB) to avoid memory issues
-    return content.length > 100000 ? content.substring(0, 100000) + "... [truncated]" : content;
+    if (content.length > 100000) {
+      return content.substring(0, 100000) + "\n\n[Content truncated: Exceeded 100KB limit]";
+    }
+    return content;
   } catch {
-    return "";
+    return "[Content unavailable: Unexpected error during content extraction]";
   }
+};
+
+// Build list of sources to query based on filter
+const buildSourcesList = (driveIds: string[]): string[] => {
+  if (driveIds.length === 0) {
+    // No filter = query all sources (fallback)
+    return ["all"];
+  }
+
+  const sources: string[] = [];
+  // Add sources in order: root, shared_with_me, then shared drives
+  if (driveIds.includes("root")) {
+    sources.push("root");
+  }
+  if (driveIds.includes(SHARED_WITH_ME_DRIVE_ID)) {
+    sources.push(SHARED_WITH_ME_DRIVE_ID);
+  }
+  // Add shared drive IDs
+  for (const id of driveIds) {
+    if (id !== "root" && id !== SHARED_WITH_ME_DRIVE_ID) {
+      sources.push(id);
+    }
+  }
+  return sources;
 };
 
 export const getFiles: GetDataFn<SynchronizedFile, PaginationConfig> = async ({
@@ -73,9 +109,10 @@ export const getFiles: GetDataFn<SynchronizedFile, PaginationConfig> = async ({
   const api = createGoogleDriveApi(account);
   const driveIds = filter?.driveIds || [];
 
-  // Check if "shared with me" is selected
-  const includeSharedWithMe = driveIds.includes(SHARED_WITH_ME_DRIVE_ID);
-  const otherDriveIds = driveIds.filter((id) => id !== SHARED_WITH_ME_DRIVE_ID);
+  // Build or retrieve sources list for multi-source pagination
+  const sources = pagination?.sources || buildSourcesList(driveIds);
+  const currentSourceIndex = pagination?.currentSourceIndex ?? 0;
+  const currentSource = sources[currentSourceIndex];
 
   // Build base query for non-folder files
   let baseQuery = `mimeType != '${GOOGLE_WORKSPACE_MIME_TYPES.FOLDER}' and trashed = false`;
@@ -86,19 +123,9 @@ export const getFiles: GetDataFn<SynchronizedFile, PaginationConfig> = async ({
   const filesToProcess: Array<{file: GoogleFileMetadata; overrideDriveId?: string}> = [];
   let nextPageToken: string | undefined;
 
-  // If only "shared with me" is selected, query just that
-  if (includeSharedWithMe && otherDriveIds.length === 0) {
-    const query = `${baseQuery} and sharedWithMe = true`;
-    const result = await api.listFiles({
-      query,
-      pageToken: pagination?.pageToken,
-      pageSize: config.pageSize,
-    });
-
-    filesToProcess.push(...result.files.map((f) => ({file: f, overrideDriveId: SHARED_WITH_ME_DRIVE_ID})));
-    nextPageToken = result.nextPageToken;
-  } else {
-    // Query all accessible files
+  // Query based on current source
+  if (currentSource === "all") {
+    // Fallback: no filter, query everything
     const result = await api.listFiles({
       query: baseQuery,
       pageToken: pagination?.pageToken,
@@ -106,24 +133,45 @@ export const getFiles: GetDataFn<SynchronizedFile, PaginationConfig> = async ({
     });
 
     for (const f of result.files) {
-      // Determine which drive this file belongs to:
-      // - If file has a driveId, use that (it's in a shared drive)
-      // - If ownedByMe is false and no driveId, it's shared with the user
-      // - Otherwise it's in My Drive ("root")
       const isSharedWithMe = f.ownedByMe === false && !f.driveId;
-      const fileDriveId = f.driveId || (isSharedWithMe ? SHARED_WITH_ME_DRIVE_ID : "root");
-
-      // Skip if drive filter is active and this file doesn't match
-      if (driveIds.length > 0) {
-        const matchesFilter = otherDriveIds.includes(fileDriveId) || (includeSharedWithMe && isSharedWithMe);
-        if (!matchesFilter) {
-          continue;
-        }
-      }
-
       filesToProcess.push({file: f, overrideDriveId: isSharedWithMe ? SHARED_WITH_ME_DRIVE_ID : undefined});
     }
+    nextPageToken = result.nextPageToken;
+  } else if (currentSource === "root") {
+    // My Drive: query files owned by me
+    const result = await api.listFiles({
+      query: `${baseQuery} and 'me' in owners`,
+      pageToken: pagination?.pageToken,
+      pageSize: config.pageSize,
+    });
 
+    // Post-filter to exclude files in shared drives (they have driveId set)
+    for (const f of result.files) {
+      if (!f.driveId) {
+        filesToProcess.push({file: f});
+      }
+    }
+    nextPageToken = result.nextPageToken;
+  } else if (currentSource === SHARED_WITH_ME_DRIVE_ID) {
+    // Shared with me: query files shared with the user
+    const result = await api.listFiles({
+      query: `${baseQuery} and sharedWithMe = true`,
+      pageToken: pagination?.pageToken,
+      pageSize: config.pageSize,
+    });
+
+    filesToProcess.push(...result.files.map((f) => ({file: f, overrideDriveId: SHARED_WITH_ME_DRIVE_ID})));
+    nextPageToken = result.nextPageToken;
+  } else {
+    // Specific shared drive: use efficient driveId filtering
+    const result = await api.listFiles({
+      query: baseQuery,
+      driveId: currentSource,
+      pageToken: pagination?.pageToken,
+      pageSize: config.pageSize,
+    });
+
+    filesToProcess.push(...result.files.map((f) => ({file: f})));
     nextPageToken = result.nextPageToken;
   }
 
@@ -152,15 +200,28 @@ export const getFiles: GetDataFn<SynchronizedFile, PaginationConfig> = async ({
     }),
   );
 
+  // Determine next pagination state
+  let hasNext = false;
+  const nextPageConfig: PaginationConfig = {sources, cumulativeSizeBytes};
+
+  if (nextPageToken) {
+    // More pages in current source
+    hasNext = true;
+    nextPageConfig.currentSourceIndex = currentSourceIndex;
+    nextPageConfig.pageToken = nextPageToken;
+  } else if (currentSourceIndex < sources.length - 1) {
+    // Move to next source
+    hasNext = true;
+    nextPageConfig.currentSourceIndex = currentSourceIndex + 1;
+    nextPageConfig.pageToken = undefined;
+  }
+
   return {
     items,
     synchronizationType: _.isEmpty(lastSynchronizedAt) ? "full" : "delta",
     pagination: {
-      hasNext: !_.isEmpty(nextPageToken),
-      nextPageConfig: {
-        pageToken: nextPageToken,
-        cumulativeSizeBytes, // Pass to next page for quota tracking
-      },
+      hasNext,
+      nextPageConfig: hasNext ? nextPageConfig : undefined,
     },
   };
 };
