@@ -16,7 +16,7 @@ export const config = {
     clientSecret: env["GOOGLE_CLIENT_SECRET"],
     redirectUri: env["GOOGLE_REDIRECT_URI"],
     scopes: [
-      "https://www.googleapis.com/auth/drive.readonly",
+      "https://www.googleapis.com/auth/drive", // Full access needed for sharing
       "https://www.googleapis.com/auth/userinfo.email",
       "https://www.googleapis.com/auth/userinfo.profile",
     ],
