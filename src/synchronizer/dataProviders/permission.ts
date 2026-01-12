@@ -53,6 +53,7 @@ const transformPermission = (
 
   return {
     id: uniqueId,
+    googleId: permission.id,
     name,
     resourceId,
     resourceType,

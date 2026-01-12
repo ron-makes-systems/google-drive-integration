@@ -325,6 +325,17 @@ export const createGoogleDriveApi = (account: IntegrationAccount) => {
     return response.data as GooglePermission;
   };
 
+  // Delete a permission (unshare) from a file, folder, or drive
+  const deletePermission = async ({fileId, permissionId}: {fileId: string; permissionId: string}): Promise<void> => {
+    await call(() =>
+      drive.permissions.delete({
+        fileId,
+        permissionId,
+        supportsAllDrives: true,
+      }),
+    );
+  };
+
   return {
     validate,
     getCurrentUser,
@@ -340,6 +351,7 @@ export const createGoogleDriveApi = (account: IntegrationAccount) => {
     getFileMetadata,
     listPermissions,
     createPermission,
+    deletePermission,
   };
 };
 

@@ -92,6 +92,7 @@ export interface SynchronizedRole {
 
 export interface SynchronizedPermission {
   id: string;
+  googleId: string;
   name: string;
   resourceId: string;
   resourceType: "drive" | "folder" | "file";

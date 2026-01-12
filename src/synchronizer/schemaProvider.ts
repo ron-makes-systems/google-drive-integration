@@ -146,6 +146,7 @@ const schema: SynchronizerSchema = {
 
   [SynchronizerType.Permission]: {
     id: {name: "Id", type: "id"},
+    googleId: {name: "Google ID", type: "text"},
     name: {name: "Name", type: "text", subType: "title"},
     resourceId: {name: "Resource ID", type: "text"},
     resourceType: {

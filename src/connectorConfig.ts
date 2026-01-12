@@ -40,6 +40,24 @@ const createShareActionArgs = (resourceType: "Drive" | "Folder" | "File"): Actio
   ];
 };
 
+// Unshare action args - works for drives, folders, and files
+const unshareActionArgs: Action["args"] = [
+  {
+    id: "resourceId",
+    name: "Resource ID",
+    description: "Google ID of the Drive, Folder, or File (from Permission's Resource ID field)",
+    type: "text",
+    textTemplateSupported: true,
+  },
+  {
+    id: "permissionId",
+    name: "Permission ID",
+    description: "Google ID of the permission to remove (from Permission's Google ID field)",
+    type: "text",
+    textTemplateSupported: true,
+  },
+];
+
 export const getConnectorConfig = (): ConnectorConfig => {
   return {
     id: "google-drive-connector",
@@ -83,6 +101,12 @@ export const getConnectorConfig = (): ConnectorConfig => {
         name: "Share File",
         description: "Share a file with users",
         args: createShareActionArgs("File"),
+      },
+      {
+        action: "unshare",
+        name: "Unshare Resource",
+        description: "Remove a permission from a Drive, Folder, or File",
+        args: unshareActionArgs,
       },
     ],
     responsibleFor: {

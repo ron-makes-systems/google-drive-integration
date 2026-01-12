@@ -7,14 +7,19 @@ const SHARE_ACTIONS = ["share-drive", "share-folder", "share-file"];
 
 export type ActionArgs = {
   resourceId: string;
-  emails: string;
-  role: string;
+  // Share action args
+  emails?: string;
+  role?: string;
   sendNotification?: string;
+  // Unshare action args
+  permissionId?: string;
 };
 
 export const executeAction = async (account: IntegrationAccount, action: string, args: ActionArgs): Promise<void> => {
   if (SHARE_ACTIONS.includes(action)) {
     await executeShareAction(account, args);
+  } else if (action === "unshare") {
+    await executeUnshareAction(account, args);
   } else {
     throw new ValidationError(`Unknown action: ${action}`);
   }
@@ -86,5 +91,31 @@ const executeShareAction = async (account: IntegrationAccount, args: ActionArgs)
       logger.error(`Failed to share ${resourceId} with ${email}:`, {error});
       throw error;
     }
+  }
+};
+
+const executeUnshareAction = async (account: IntegrationAccount, args: ActionArgs): Promise<void> => {
+  const {resourceId, permissionId} = args;
+
+  if (!resourceId) {
+    throw new ValidationError(`"resourceId" is required`);
+  }
+  if (!permissionId) {
+    throw new ValidationError(`"permissionId" is required`);
+  }
+
+  const api = createGoogleDriveApi(account);
+
+  logger.info(`Removing permission ${permissionId} from resource ${resourceId}`);
+
+  try {
+    await api.deletePermission({
+      fileId: resourceId,
+      permissionId,
+    });
+    logger.info(`Removed permission ${permissionId} from ${resourceId}`);
+  } catch (error) {
+    logger.error(`Failed to remove permission ${permissionId} from ${resourceId}:`, {error});
+    throw error;
   }
 };
