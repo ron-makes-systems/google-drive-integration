@@ -296,6 +296,35 @@ export const createGoogleDriveApi = (account: IntegrationAccount) => {
     };
   };
 
+  // Create a permission (share) for a file, folder, or drive
+  const createPermission = async ({
+    fileId,
+    type,
+    role,
+    emailAddress,
+    sendNotificationEmail = true,
+  }: {
+    fileId: string;
+    type: "user" | "group" | "domain" | "anyone";
+    role: string;
+    emailAddress?: string;
+    sendNotificationEmail?: boolean;
+  }): Promise<GooglePermission> => {
+    const response = await call(() =>
+      drive.permissions.create({
+        fileId,
+        supportsAllDrives: true,
+        sendNotificationEmail,
+        requestBody: {
+          type,
+          role,
+          emailAddress,
+        },
+      }),
+    );
+    return response.data as GooglePermission;
+  };
+
   return {
     validate,
     getCurrentUser,
@@ -310,6 +339,7 @@ export const createGoogleDriveApi = (account: IntegrationAccount) => {
     getFilePermissions,
     getFileMetadata,
     listPermissions,
+    createPermission,
   };
 };
 
