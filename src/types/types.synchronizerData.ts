@@ -19,6 +19,7 @@ export type GetDataFn<T, P = unknown> = (p: {
   filter?: Partial<SynchronizerDataFilter>;
   lastSynchronizedAt?: string;
   pagination?: P;
+  tier?: string; // Marketplace tier from x-marketplace-tier-id header
 }) => Promise<SynchronizerData<T, P>>;
 
 export type PaginationConfig = {

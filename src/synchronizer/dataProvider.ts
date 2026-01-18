@@ -27,12 +27,14 @@ export const getData = async ({
   filter,
   lastSynchronizedAt,
   pagination,
+  tier,
 }: {
   account: IntegrationAccount;
   requestedType: SynchronizerType;
   filter?: Partial<SynchronizerDataFilter>;
   lastSynchronizedAt?: string;
   pagination?: PaginationConfig;
+  tier?: string;
 }): Promise<SynchronizerData<unknown>> => {
   const getDataForType = dataProviders[requestedType];
   if (!getDataForType) {
@@ -43,7 +45,7 @@ export const getData = async ({
   logger.info(
     `start fetching data ${requestedType} with pagination ${JSON.stringify(
       pagination,
-    )}. lastSynchronizedAt: ${lastSynchronizedAt}`,
+    )}. lastSynchronizedAt: ${lastSynchronizedAt}, tier: ${tier || "default"}`,
   );
   try {
     const data = await getDataForType({
@@ -51,6 +53,7 @@ export const getData = async ({
       filter,
       lastSynchronizedAt,
       pagination,
+      tier,
     });
     timer.done(
       `fetching of ${requestedType} has been completed with pagination ${JSON.stringify(pagination)}. fetched items: ${

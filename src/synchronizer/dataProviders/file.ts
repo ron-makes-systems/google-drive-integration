@@ -1,7 +1,7 @@
 import _ from "lodash";
 import {GetDataFn, PaginationConfig, SynchronizedFile} from "../../types/types.synchronizerData.js";
 import {createGoogleDriveApi, GOOGLE_WORKSPACE_MIME_TYPES, EXPORTABLE_MIME_TYPES} from "../../api/googleDrive.js";
-import {config} from "../../config.js";
+import {config, getStorageQuotaForTier} from "../../config.js";
 import {GoogleFileMetadata} from "../../types/types.googleDrive.js";
 import {AppError} from "../../errors/errors.js";
 
@@ -106,6 +106,7 @@ export const getFiles: GetDataFn<SynchronizedFile, PaginationConfig> = async ({
   filter,
   lastSynchronizedAt,
   pagination,
+  tier,
 }) => {
   const api = createGoogleDriveApi(account);
   const driveIds = filter?.driveIds || [];
@@ -182,10 +183,11 @@ export const getFiles: GetDataFn<SynchronizedFile, PaginationConfig> = async ({
     cumulativeSizeBytes += file.size ? parseInt(file.size, 10) : 0;
   }
 
-  // Check quota limit
-  if (cumulativeSizeBytes > config.storageQuotaBytes) {
+  // Check quota limit based on tier
+  const storageQuotaBytes = getStorageQuotaForTier(tier);
+  if (cumulativeSizeBytes > storageQuotaBytes) {
     const totalGB = (cumulativeSizeBytes / 1024 ** 3).toFixed(2);
-    const limitGB = (config.storageQuotaBytes / 1024 ** 3).toFixed(0);
+    const limitGB = (storageQuotaBytes / 1024 ** 3).toFixed(0);
     throw new AppError({
       statusCode: 400,
       message: `This sync contains ${totalGB} GB of files, which exceeds the ${limitGB} GB limit for your plan. Please select fewer drives or upgrade your plan.`,

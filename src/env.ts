@@ -27,8 +27,4 @@ export const env = cleanEnv(process.env, {
     default: "https://oauth-svc.fibery.io",
     desc: "Google OAuth2 Redirect URI (Fibery's OAuth service)",
   }),
-  STORAGE_QUOTA_BYTES: num({
-    default: 1000 * 1024 * 1024 * 1024, // 15GB
-    desc: "Storage quota in bytes per sync",
-  }),
 });

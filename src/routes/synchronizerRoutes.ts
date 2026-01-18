@@ -94,6 +94,9 @@ export const createSynchronizerRoutes = () => {
         throw new ValidationError(`"requestedType" is missing`);
       }
 
+      // Extract tier from marketplace gateway header
+      const tier = req.get("x-marketplace-tier-id") || undefined;
+
       res.json(
         await getData({
           account,
@@ -101,6 +104,7 @@ export const createSynchronizerRoutes = () => {
           filter,
           lastSynchronizedAt,
           pagination,
+          tier,
         }),
       );
     }),
