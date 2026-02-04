@@ -27,6 +27,7 @@ import {
   upsertChannel,
 } from "../webhooks/webhookStore.js";
 import {logger} from "../infra/logger.js";
+import {env} from "../env.js";
 
 export const createSynchronizerRoutes = () => {
   const router = express.Router();
@@ -141,13 +142,43 @@ export const createSynchronizerRoutes = () => {
   router.post(
     "/webhooks",
     asyncWrap(async (req: Request<unknown, unknown, WebhookInstallRequestBody>, res) => {
-      const {account, webhook, app} = req.body;
+      const {account, webhook, app, appId, app_id} = req.body;
 
       if (!account) {
         throw new ValidationError(`"account" is missing`);
       }
-      if (!app) {
-        throw new ValidationError(`"app" is missing`);
+      const appFromBody = app || appId || app_id;
+      const headerWebhookUrl = req.get("x-marketplace-webhook-url") || undefined;
+      const headerWorkspaceId = req.get("x-marketplace-workspace-id") || undefined;
+
+      if (headerWebhookUrl) {
+        try {
+          const parsed = new URL(headerWebhookUrl);
+          logger.info("Webhook install headers", {
+            hasHeaderWebhookUrl: true,
+            headerWebhookHost: parsed.host,
+            headerWebhookPath: parsed.pathname,
+            headerWorkspaceId,
+            appFromBody,
+            webhookId: webhook?.id,
+          });
+        } catch {
+          logger.info("Webhook install headers", {
+            hasHeaderWebhookUrl: true,
+            headerWebhookHost: undefined,
+            headerWebhookPath: undefined,
+            headerWorkspaceId,
+            appFromBody,
+            webhookId: webhook?.id,
+          });
+        }
+      } else {
+        logger.info("Webhook install headers", {
+          hasHeaderWebhookUrl: false,
+          headerWorkspaceId,
+          appFromBody,
+          webhookId: webhook?.id,
+        });
       }
 
       const api = createGoogleDriveApi(account);
@@ -166,7 +197,27 @@ export const createSynchronizerRoutes = () => {
         }
       }
 
-      const callbackUrl = req.get("x-marketplace-webhook-url") || `https://webhooks-svc.fibery.io/apps/${app}`;
+      const callbackUrl =
+        req.get("x-marketplace-webhook-url") ||
+        env["WEBHOOK_CALLBACK_URL"] ||
+        (appFromBody ? `https://webhooks-svc.fibery.io/apps/${appFromBody}` : undefined);
+
+      logger.info("Webhook install callback", {
+        source: req.get("x-marketplace-webhook-url")
+          ? "header"
+          : env["WEBHOOK_CALLBACK_URL"]
+            ? "env"
+            : appFromBody
+              ? "body"
+              : "none",
+        hasCallbackUrl: Boolean(callbackUrl),
+      });
+
+      if (!callbackUrl) {
+        throw new ValidationError(
+          `"app" is missing. Provide app id in request or set WEBHOOK_CALLBACK_URL for webhook registration.`,
+        );
+      }
       const startPageToken = await api.getStartPageToken();
 
       const expiration = Date.now() + DEFAULT_CHANNEL_TTL_MS;

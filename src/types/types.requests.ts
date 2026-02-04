@@ -44,6 +44,8 @@ export type WebhookInstallRequestBody = {
   account?: IntegrationAccount;
   webhook?: {id?: string | number} | null;
   app?: string;
+  appId?: string;
+  app_id?: string;
 };
 
 export type WebhookTransformRequestBody = {

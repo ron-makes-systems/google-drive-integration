@@ -24,6 +24,10 @@ export const env = cleanEnv(process.env, {
     default: "",
     desc: "PostgreSQL connection string for webhook state",
   }),
+  WEBHOOK_CALLBACK_URL: str({
+    default: "",
+    desc: "Override webhook callback URL for Google Drive watch registration",
+  }),
   // Google OAuth2 configuration
   GOOGLE_CLIENT_ID: str({desc: "Google OAuth2 Client ID"}),
   GOOGLE_CLIENT_SECRET: str({desc: "Google OAuth2 Client Secret"}),
