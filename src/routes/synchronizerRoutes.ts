@@ -250,6 +250,12 @@ export const createSynchronizerRoutes = () => {
       const channelId = getHeaderValue(req.headers, "x-goog-channel-id");
       const token = getHeaderValue(req.headers, "x-goog-channel-token");
 
+      logger.info("Webhook pre-process received", {
+        hasChannelId: Boolean(channelId),
+        hasToken: Boolean(token),
+        headerKeysSample: Object.keys(req.headers).slice(0, 10),
+      });
+
       const channel = channelId ? await getChannel(channelId) : undefined;
       const workspaceId = channel?.workspaceId || token;
 
@@ -278,6 +284,12 @@ export const createSynchronizerRoutes = () => {
 
       const channelId = getHeaderValue(params, "x-goog-channel-id");
       const resourceState = getHeaderValue(params, "x-goog-resource-state");
+
+      logger.info("Webhook transform received", {
+        hasChannelId: Boolean(channelId),
+        resourceState,
+        paramKeysSample: params ? Object.keys(params).slice(0, 10) : [],
+      });
 
       if (resourceState === "sync") {
         res.json({data: {}});
