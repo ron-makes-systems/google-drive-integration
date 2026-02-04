@@ -9,6 +9,7 @@ export type WebhookChannelState = {
   resourceId?: string;
   expiration?: string;
   knownTypes: Record<string, "file" | "folder">;
+  knownPermissions: Record<string, string[]>;
   updatedAt: number;
 };
 
@@ -19,6 +20,7 @@ type WebhookChannelRow = {
   resource_id: string | null;
   expiration: string | null;
   known_types: Record<string, "file" | "folder"> | null;
+  known_permissions: Record<string, string[]> | null;
   updated_at: Date;
 };
 
@@ -38,13 +40,17 @@ const hasPostgres = () => {
   return true;
 };
 
-export const upsertChannel = async (state: Omit<WebhookChannelState, "updatedAt" | "knownTypes">) => {
+export const upsertChannel = async (
+  state: Omit<WebhookChannelState, "updatedAt" | "knownTypes" | "knownPermissions">,
+) => {
   if (!hasPostgres()) {
     const existing = inMemory.get(state.channelId);
     const knownTypes = existing?.knownTypes || {};
+    const knownPermissions = existing?.knownPermissions || {};
     inMemory.set(state.channelId, {
       ...state,
       knownTypes,
+      knownPermissions,
       updatedAt: Date.now(),
     });
     return;
@@ -70,7 +76,7 @@ export const getChannel = async (channelId: string): Promise<WebhookChannelState
   }
 
   const result = await pool!.query<WebhookChannelRow>(
-    `SELECT channel_id, workspace_id, page_token, resource_id, expiration, known_types, updated_at
+    `SELECT channel_id, workspace_id, page_token, resource_id, expiration, known_types, known_permissions, updated_at
      FROM drive_webhook_channels
      WHERE channel_id = $1`,
     [channelId],
@@ -86,6 +92,7 @@ export const getChannel = async (channelId: string): Promise<WebhookChannelState
     resourceId: row.resource_id || undefined,
     expiration: row.expiration || undefined,
     knownTypes: row.known_types || {},
+    knownPermissions: row.known_permissions || {},
     updatedAt: row.updated_at.getTime(),
   };
 };
@@ -136,5 +143,29 @@ export const recordKnownType = async (channelId: string, fileId: string, type: "
          updated_at = NOW()
      WHERE channel_id = $1`,
     [channelId, fileId, type],
+  );
+};
+
+export const recordKnownPermissions = async (channelId: string, resourceId: string, permissionIds: string[]) => {
+  if (!hasPostgres()) {
+    const existing = inMemory.get(channelId);
+    if (!existing) return;
+    inMemory.set(channelId, {
+      ...existing,
+      knownPermissions: {
+        ...existing.knownPermissions,
+        [resourceId]: permissionIds,
+      },
+      updatedAt: Date.now(),
+    });
+    return;
+  }
+
+  await pool!.query(
+    `UPDATE drive_webhook_channels
+     SET known_permissions = jsonb_set(COALESCE(known_permissions, '{}'::jsonb), ARRAY[$2], to_jsonb($3::text[]), true),
+         updated_at = NOW()
+     WHERE channel_id = $1`,
+    [channelId, resourceId, permissionIds],
   );
 };

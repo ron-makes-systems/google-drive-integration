@@ -1,5 +1,5 @@
 import {GoogleFileMetadata} from "../types/types.googleDrive.js";
-import {SynchronizedFile, SynchronizedFolder} from "../types/types.synchronizerData.js";
+import {SynchronizedDrive, SynchronizedFile, SynchronizedFolder} from "../types/types.synchronizerData.js";
 import {GOOGLE_WORKSPACE_MIME_TYPES} from "../api/googleDrive.js";
 
 const getMimeTypeCategory = (mimeType: string): string => {
@@ -18,6 +18,44 @@ const generateEmbedHtml = (fileId: string): string => {
   const embedUrl = `https://drive.google.com/file/d/${fileId}/preview`;
   return `<div contenteditable="false" data-dynamic-content="true" data-compatible-mode="true" data-url="${embedUrl}">Google Drive File</div>`;
 };
+
+const getDriveTypeLabel = (type: "personal" | "shared" | "shared_with_me"): string => {
+  switch (type) {
+    case "personal":
+      return "Personal";
+    case "shared_with_me":
+      return "Shared With Me";
+    case "shared":
+      return "Shared";
+  }
+};
+
+const getDriveWebLink = (id: string, type: "personal" | "shared" | "shared_with_me"): string => {
+  switch (type) {
+    case "personal":
+      return "https://drive.google.com/drive/my-drive";
+    case "shared_with_me":
+      return "https://drive.google.com/drive/shared-with-me";
+    case "shared":
+      return `https://drive.google.com/drive/folders/${id}`;
+  }
+};
+
+export const toSynchronizedDrive = (drive: {
+  id: string;
+  name: string;
+  type: "personal" | "shared" | "shared_with_me";
+  colorRgb?: string;
+  createdTime?: string;
+}): SynchronizedDrive => ({
+  id: drive.id,
+  googleId: drive.id,
+  name: drive.name,
+  type: getDriveTypeLabel(drive.type),
+  colorRgb: drive.colorRgb,
+  createdTime: drive.createdTime,
+  webViewLink: getDriveWebLink(drive.id, drive.type),
+});
 
 export const toSynchronizedFile = (file: GoogleFileMetadata, overrideDriveId?: string): SynchronizedFile => ({
   id: file.id,

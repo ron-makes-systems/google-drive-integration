@@ -7,12 +7,12 @@ import {GooglePermission} from "../../types/types.googleDrive.js";
 const SHARED_WITH_ME_DRIVE_ID = "shared_with_me";
 
 // Resource types for permission syncing
-type ResourceType = "drive" | "folder" | "file";
+export type PermissionResourceType = "drive" | "folder" | "file";
 
 // Permission pagination config - tracks phase and progress
 type PermissionPaginationConfig = {
   // Current phase: drives -> folders -> files
-  phase: ResourceType;
+  phase: PermissionResourceType;
   // Source tracking (for folders and files)
   sources?: string[];
   currentSourceIndex?: number;
@@ -28,10 +28,10 @@ type PermissionPaginationConfig = {
 };
 
 // Transform Google permission to synchronized format
-const transformPermission = (
+export const toSynchronizedPermission = (
   permission: GooglePermission,
   resourceId: string,
-  resourceType: ResourceType,
+  resourceType: PermissionResourceType,
 ): SynchronizedPermission => {
   // Compute inherited and permissionType from permissionDetails
   let inherited = false;
@@ -137,7 +137,7 @@ export const getPermissions: GetDataFn<SynchronizedPermission, PermissionPaginat
       pageToken: pagination?.permissionPageToken,
     });
 
-    const items = permResult.permissions.map((p) => transformPermission(p, currentDriveId, "drive"));
+    const items = permResult.permissions.map((p) => toSynchronizedPermission(p, currentDriveId, "drive"));
 
     // Determine next pagination state
     let hasNext = false;
@@ -196,7 +196,7 @@ export const getPermissions: GetDataFn<SynchronizedPermission, PermissionPaginat
       pageToken: pagination.permissionPageToken,
     });
 
-    const items = permResult.permissions.map((p) => transformPermission(p, resourceId, phase));
+    const items = permResult.permissions.map((p) => toSynchronizedPermission(p, resourceId, phase));
 
     // Determine next pagination state
     let hasNext = false;

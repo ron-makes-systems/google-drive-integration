@@ -15,17 +15,20 @@ import {
 import {streamResource} from "../synchronizer/resourceProvider.js";
 import {getSchema} from "../synchronizer/schemaProvider.js";
 import {getData} from "../synchronizer/dataProvider.js";
-import {SynchronizerData} from "../types/types.synchronizerData.js";
+import {SynchronizerData, SynchronizedUser} from "../types/types.synchronizerData.js";
 import {createGoogleDriveApi, GOOGLE_WORKSPACE_MIME_TYPES} from "../api/googleDrive.js";
 import {SynchronizerFilter, SynchronizerType} from "../types/types.synchronizerConfig.js";
-import {toSynchronizedFile, toSynchronizedFolder} from "../webhooks/transformers.js";
+import {toSynchronizedDrive, toSynchronizedFile, toSynchronizedFolder} from "../webhooks/transformers.js";
 import {
   getChannel,
+  recordKnownPermissions,
   recordKnownType,
   removeChannel,
   updateChannelToken,
   upsertChannel,
 } from "../webhooks/webhookStore.js";
+import {PermissionResourceType, toSynchronizedPermission} from "../synchronizer/dataProviders/permission.js";
+import {GooglePermission, GoogleUser} from "../types/types.googleDrive.js";
 import {logger} from "../infra/logger.js";
 import {env} from "../env.js";
 
@@ -182,8 +185,11 @@ export const createSynchronizerRoutes = () => {
       }
 
       const api = createGoogleDriveApi(account);
-      const user = await api.getCurrentUser();
-      const workspaceId = user.emailAddress || user.permissionId || "google-drive";
+      let workspaceId = headerWorkspaceId || appFromBody;
+      if (!workspaceId) {
+        const user = await api.getCurrentUser();
+        workspaceId = user.permissionId || "google-drive";
+      }
 
       const existingId = webhook?.id ? String(webhook.id) : undefined;
       const channelId = existingId || crypto.randomUUID();
@@ -305,8 +311,11 @@ export const createSynchronizerRoutes = () => {
       const api = createGoogleDriveApi(account);
       const requestedTypes = new Set(types || []);
 
+      const allowDrive = requestedTypes.size === 0 || requestedTypes.has(SynchronizerType.Drive);
       const allowFile = requestedTypes.size === 0 || requestedTypes.has(SynchronizerType.File);
       const allowFolder = requestedTypes.size === 0 || requestedTypes.has(SynchronizerType.Folder);
+      const allowUser = requestedTypes.size === 0 || requestedTypes.has(SynchronizerType.User);
+      const allowPermission = requestedTypes.size === 0 || requestedTypes.has(SynchronizerType.Permission);
 
       const channel = channelId ? await getChannel(channelId) : undefined;
       let pageToken = channel?.pageToken;
@@ -321,8 +330,92 @@ export const createSynchronizerRoutes = () => {
       }
 
       const data: Record<string, Array<Record<string, unknown>>> = {};
+      if (allowDrive) data[SynchronizerType.Drive] = [];
       if (allowFile) data[SynchronizerType.File] = [];
       if (allowFolder) data[SynchronizerType.Folder] = [];
+      if (allowPermission) data[SynchronizerType.Permission] = [];
+
+      const userMap = new Map<string, SynchronizedUser>();
+
+      const addUser = (user?: GoogleUser) => {
+        if (!allowUser || !user?.permissionId) return;
+        if (!userMap.has(user.permissionId)) {
+          userMap.set(user.permissionId, {
+            id: user.permissionId,
+            name: user.displayName || user.emailAddress || "Unknown",
+            email: user.emailAddress || undefined,
+            photoUrl: user.photoLink || undefined,
+          });
+        }
+      };
+
+      const addUserFromPermission = (permission: GooglePermission) => {
+        if (!allowUser || permission.type !== "user" || !permission.id) return;
+        if (!userMap.has(permission.id)) {
+          userMap.set(permission.id, {
+            id: permission.id,
+            name: permission.displayName || permission.emailAddress || "Unknown",
+            email: permission.emailAddress || undefined,
+            photoUrl: permission.photoLink || undefined,
+          });
+        }
+      };
+
+      const listAllPermissions = async (resourceId: string): Promise<GooglePermission[]> => {
+        const permissions: GooglePermission[] = [];
+        let permissionPageToken: string | undefined;
+        do {
+          const result = await api.listPermissions({
+            fileId: resourceId,
+            pageToken: permissionPageToken,
+          });
+          permissions.push(...result.permissions);
+          permissionPageToken = result.nextPageToken;
+        } while (permissionPageToken);
+        return permissions;
+      };
+
+      const collectPermissionsForResource = async (resourceId: string, resourceType: PermissionResourceType) => {
+        if (!allowPermission && !allowUser) return;
+
+        const permissions = await listAllPermissions(resourceId);
+        const permissionIds = permissions.map((p) => p.id);
+        const previousIds = channel?.knownPermissions?.[resourceId] || [];
+
+        if (allowPermission) {
+          for (const removedId of previousIds) {
+            if (!permissionIds.includes(removedId)) {
+              data[SynchronizerType.Permission]?.push({
+                id: `${resourceType}_${resourceId}_${removedId}`,
+                __syncAction: "DELETE",
+              });
+            }
+          }
+
+          for (const permission of permissions) {
+            data[SynchronizerType.Permission]?.push({
+              ...toSynchronizedPermission(permission, resourceId, resourceType),
+              __syncAction: "SET",
+            });
+          }
+        }
+
+        if (allowUser) {
+          for (const permission of permissions) {
+            addUserFromPermission(permission);
+          }
+        }
+
+        if (channelId) {
+          await recordKnownPermissions(channelId, resourceId, permissionIds);
+          if (channel) {
+            channel.knownPermissions = {
+              ...channel.knownPermissions,
+              [resourceId]: permissionIds,
+            };
+          }
+        }
+      };
 
       let nextPageToken: string | undefined = pageToken;
       let newStartPageToken: string | undefined;
@@ -333,6 +426,55 @@ export const createSynchronizerRoutes = () => {
         nextPageToken = result.nextPageToken;
 
         for (const change of result.changes) {
+          // Shared drive updates
+          if (change.changeType === "drive" || change.drive) {
+            const driveId = change.driveId || change.drive?.id;
+            if (!driveId) continue;
+
+            if (filter?.driveIds && filter.driveIds.length > 0 && !filter.driveIds.includes(driveId)) {
+              continue;
+            }
+
+            if (change.removed) {
+              if (allowDrive) {
+                data[SynchronizerType.Drive]?.push({id: driveId, __syncAction: "DELETE"});
+              }
+              if (channelId) {
+                const previousIds = channel?.knownPermissions?.[driveId] || [];
+                if (allowPermission && previousIds.length > 0) {
+                  for (const removedId of previousIds) {
+                    data[SynchronizerType.Permission]?.push({
+                      id: `drive_${driveId}_${removedId}`,
+                      __syncAction: "DELETE",
+                    });
+                  }
+                }
+                await recordKnownPermissions(channelId, driveId, []);
+                if (channel) {
+                  channel.knownPermissions = {
+                    ...channel.knownPermissions,
+                    [driveId]: [],
+                  };
+                }
+              }
+              continue;
+            }
+
+            if (allowDrive && change.drive) {
+              const driveItem = toSynchronizedDrive({
+                id: driveId,
+                name: change.drive.name || "Shared Drive",
+                type: "shared",
+                colorRgb: change.drive.colorRgb || undefined,
+                createdTime: change.drive.createdTime || undefined,
+              });
+              data[SynchronizerType.Drive]?.push({...driveItem, __syncAction: "SET"});
+            }
+
+            await collectPermissionsForResource(driveId, "drive");
+            continue;
+          }
+
           const fileId = change.fileId || change.file?.id;
           if (!fileId) continue;
 
@@ -343,6 +485,28 @@ export const createSynchronizerRoutes = () => {
             }
             if (allowFolder && (knownType === "folder" || !knownType)) {
               data[SynchronizerType.Folder]?.push({id: fileId, __syncAction: "DELETE"});
+            }
+            if (channelId) {
+              const previousIds = channel?.knownPermissions?.[fileId] || [];
+              const deleteTypes: PermissionResourceType[] =
+                knownType === "file" || knownType === "folder" ? [knownType] : ["file", "folder"];
+              if (allowPermission && previousIds.length > 0) {
+                for (const removedId of previousIds) {
+                  for (const deleteType of deleteTypes) {
+                    data[SynchronizerType.Permission]?.push({
+                      id: `${deleteType}_${fileId}_${removedId}`,
+                      __syncAction: "DELETE",
+                    });
+                  }
+                }
+              }
+              await recordKnownPermissions(channelId, fileId, []);
+              if (channel) {
+                channel.knownPermissions = {
+                  ...channel.knownPermissions,
+                  [fileId]: [],
+                };
+              }
             }
             continue;
           }
@@ -355,26 +519,46 @@ export const createSynchronizerRoutes = () => {
             continue;
           }
 
+          if (allowUser) {
+            if (normalizedFile.owners) {
+              for (const owner of normalizedFile.owners) {
+                addUser(owner);
+              }
+            }
+            addUser(normalizedFile.lastModifyingUser);
+          }
+
           if (normalizedFile.mimeType === GOOGLE_WORKSPACE_MIME_TYPES.FOLDER) {
-            if (!allowFolder) continue;
-            const item = toSynchronizedFolder(normalizedFile, derivedDriveId);
-            data[SynchronizerType.Folder]?.push({...item, __syncAction: "SET"});
+            if (allowFolder) {
+              const item = toSynchronizedFolder(normalizedFile, derivedDriveId);
+              data[SynchronizerType.Folder]?.push({...item, __syncAction: "SET"});
+            }
             if (channelId) {
               await recordKnownType(channelId, normalizedFile.id, "folder");
             }
+            await collectPermissionsForResource(normalizedFile.id, "folder");
           } else {
-            if (!allowFile) continue;
-            const item = toSynchronizedFile(normalizedFile, derivedDriveId);
-            data[SynchronizerType.File]?.push({...item, __syncAction: "SET"});
+            if (allowFile) {
+              const item = toSynchronizedFile(normalizedFile, derivedDriveId);
+              data[SynchronizerType.File]?.push({...item, __syncAction: "SET"});
+            }
             if (channelId) {
               await recordKnownType(channelId, normalizedFile.id, "file");
             }
+            await collectPermissionsForResource(normalizedFile.id, "file");
           }
         }
       }
 
       if (channelId && newStartPageToken) {
         await updateChannelToken(channelId, newStartPageToken);
+      }
+
+      if (allowUser) {
+        data[SynchronizerType.User] = Array.from(userMap.values()).map((user) => ({
+          ...user,
+          __syncAction: "SET",
+        }));
       }
 
       res.json({data});

@@ -403,7 +403,7 @@ export const createGoogleDriveApi = (account: IntegrationAccount) => {
         includeItemsFromAllDrives: true,
         includeRemoved: true,
         fields:
-          "nextPageToken,newStartPageToken,changes(fileId,removed,changeType,file(id,name,mimeType,description,createdTime,modifiedTime,size,webViewLink,iconLink,thumbnailLink,parents,driveId,owners,lastModifyingUser,trashed,ownedByMe,shared))",
+          "nextPageToken,newStartPageToken,changes(changeType,driveId,drive(id,name,colorRgb,createdTime),fileId,removed,file(id,name,mimeType,description,createdTime,modifiedTime,size,webViewLink,iconLink,thumbnailLink,parents,driveId,owners,lastModifyingUser,trashed,ownedByMe,shared))",
       }),
     );
     return {
