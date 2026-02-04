@@ -328,7 +328,7 @@ export const getPermissions: GetDataFn<SynchronizedPermission, PermissionPaginat
     if (!resource.isSharedDrive && resource.permissions) {
       // My Drive: permissions are included in the response
       for (const perm of resource.permissions) {
-        items.push(transformPermission(perm, resource.id, phase));
+        items.push(toSynchronizedPermission(perm, resource.id, phase));
       }
     } else if (resource.isSharedDrive) {
       // Shared Drive: need to call permissions.list separately
