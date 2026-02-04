@@ -30,14 +30,16 @@ export type ActionArg = {
   id: string;
   name: string;
   description?: string;
-  type: "text" | "textarea";
+  type: "text" | "textarea" | "files";
   textTemplateSupported?: boolean;
+  sendAsLinkOfFiberyFiles?: boolean;
 };
 
 export type Action = {
   action: string;
   name: string;
   description?: string;
+  icon?: string;
   args: Array<ActionArg>;
 };
 

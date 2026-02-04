@@ -58,6 +58,61 @@ const unshareActionArgs: Action["args"] = [
   },
 ];
 
+const uploadFileActionArgs: Action["args"] = [
+  {
+    id: "file",
+    name: "File",
+    description: "Fibery file to upload",
+    type: "files",
+    sendAsLinkOfFiberyFiles: true,
+  },
+  {
+    id: "fileName",
+    name: "File Name",
+    description: "Name to use for the uploaded file",
+    type: "text",
+    textTemplateSupported: true,
+  },
+  {
+    id: "driveId",
+    name: "Drive Id",
+    description: "Target drive ID. Use the shared drive ID for shared drives; use 'root' for My Drive.",
+    type: "text",
+    textTemplateSupported: true,
+  },
+  {
+    id: "folderId",
+    name: "Folder Id",
+    description: "Target folder ID inside the drive (optional; defaults to drive root)",
+    type: "text",
+    textTemplateSupported: true,
+  },
+];
+
+const createFolderActionArgs: Action["args"] = [
+  {
+    id: "driveId",
+    name: "Drive Id",
+    description: "Target drive ID. Use the shared drive ID for shared drives; use 'root' for My Drive.",
+    type: "text",
+    textTemplateSupported: true,
+  },
+  {
+    id: "folderName",
+    name: "Folder Name",
+    description: "Name of the folder to create",
+    type: "text",
+    textTemplateSupported: true,
+  },
+  {
+    id: "parentFolderId",
+    name: "Parent Folder Id",
+    description: "Parent folder ID where the new folder should be created (optional; defaults to drive root)",
+    type: "text",
+    textTemplateSupported: true,
+  },
+];
+
 export const getConnectorConfig = (): ConnectorConfig => {
   return {
     id: "google-drive-connector",
@@ -84,6 +139,18 @@ export const getConnectorConfig = (): ConnectorConfig => {
     ],
     sources: [],
     actions: [
+      {
+        action: "upload-file",
+        name: "Upload File",
+        description: "Upload a file to Google Drive",
+        args: uploadFileActionArgs,
+      },
+      {
+        action: "create-folder",
+        name: "Create Folder",
+        description: "Create a folder in Google Drive",
+        args: createFolderActionArgs,
+      },
       {
         action: "share-drive",
         name: "Share Drive",

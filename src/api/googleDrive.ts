@@ -1,4 +1,5 @@
 import {google, drive_v3} from "googleapis";
+import {Readable} from "node:stream";
 import pLimit from "p-limit";
 import {Response} from "express";
 import {IntegrationAccount} from "../types/types.authentication.js";
@@ -336,6 +337,58 @@ export const createGoogleDriveApi = (account: IntegrationAccount) => {
     );
   };
 
+  // Create a folder
+  const createFolder = async ({
+    name,
+    parentFolderId,
+  }: {
+    name: string;
+    parentFolderId: string;
+  }): Promise<GoogleFileMetadata> => {
+    const response = await call(() =>
+      drive.files.create({
+        supportsAllDrives: true,
+        requestBody: {
+          name,
+          mimeType: GOOGLE_WORKSPACE_MIME_TYPES.FOLDER,
+          parents: [parentFolderId],
+        },
+        fields: "id, name, mimeType, parents",
+      }),
+    );
+    return response.data as GoogleFileMetadata;
+  };
+
+  // Upload a file (creates an empty file if no content is provided)
+  const uploadFile = async ({
+    name,
+    parentFolderId,
+    mimeType = "application/octet-stream",
+    content = "",
+  }: {
+    name: string;
+    parentFolderId: string;
+    mimeType?: string;
+    content?: string | Buffer | Readable;
+  }): Promise<GoogleFileMetadata> => {
+    const body = content instanceof Readable ? content : Readable.from(content);
+    const response = await call(() =>
+      drive.files.create({
+        supportsAllDrives: true,
+        requestBody: {
+          name,
+          parents: [parentFolderId],
+        },
+        media: {
+          mimeType,
+          body,
+        },
+        fields: "id, name, mimeType, parents, size",
+      }),
+    );
+    return response.data as GoogleFileMetadata;
+  };
+
   return {
     validate,
     getCurrentUser,
@@ -352,6 +405,8 @@ export const createGoogleDriveApi = (account: IntegrationAccount) => {
     listPermissions,
     createPermission,
     deletePermission,
+    createFolder,
+    uploadFile,
   };
 };
 
