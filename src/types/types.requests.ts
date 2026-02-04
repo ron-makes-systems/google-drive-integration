@@ -39,3 +39,17 @@ export type ResourceRequestBody = {
     fileId?: string;
   };
 };
+
+export type WebhookInstallRequestBody = {
+  account?: IntegrationAccount;
+  webhook?: {id?: string | number} | null;
+  app?: string;
+};
+
+export type WebhookTransformRequestBody = {
+  params?: Record<string, unknown>;
+  payload?: unknown;
+  types?: Array<SynchronizerType>;
+  filter?: Partial<SynchronizerDataFilter>;
+  account?: IntegrationAccount;
+};

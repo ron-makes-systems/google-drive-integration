@@ -20,6 +20,10 @@ export const env = cleanEnv(process.env, {
   PAGE_SIZE: num({default: 50}),
   MAX_CONCURRENT_CONNECTIONS: num({default: 10}),
   API_VERSION: num({default: 1}),
+  DATABASE_URL: str({
+    default: "",
+    desc: "PostgreSQL connection string for webhook state",
+  }),
   // Google OAuth2 configuration
   GOOGLE_CLIENT_ID: str({desc: "Google OAuth2 Client ID"}),
   GOOGLE_CLIENT_SECRET: str({desc: "Google OAuth2 Client Secret"}),

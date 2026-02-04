@@ -19,6 +19,10 @@ type SynchronizerFilterMeta = {
 export type SynchronizerConfig = {
   types: Array<SynchronizerTypeMeta>;
   filters: Array<SynchronizerFilterMeta>;
+  webhooks?: {
+    enabled: boolean;
+    type: "ui" | "auto";
+  };
   version: number;
 };
 

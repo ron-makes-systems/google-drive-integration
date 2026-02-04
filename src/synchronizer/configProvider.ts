@@ -45,6 +45,10 @@ export const getSynchronizerConfig = (): SynchronizerConfig => {
         type: "multidropdown",
       },
     ],
+    webhooks: {
+      enabled: true,
+      type: "ui",
+    },
     version: config.apiVersion,
   };
 };

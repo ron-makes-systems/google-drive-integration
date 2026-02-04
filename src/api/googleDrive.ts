@@ -326,6 +326,93 @@ export const createGoogleDriveApi = (account: IntegrationAccount) => {
     return response.data as GooglePermission;
   };
 
+  // Get start page token for changes
+  const getStartPageToken = async (): Promise<string> => {
+    const response = await call(() =>
+      drive.changes.getStartPageToken({
+        supportsAllDrives: true,
+      }),
+    );
+    if (!response.data.startPageToken) {
+      throw new AppError({statusCode: 500, message: "Missing startPageToken from Google Drive"});
+    }
+    return response.data.startPageToken;
+  };
+
+  // Watch changes via webhooks
+  const watchChanges = async ({
+    pageToken,
+    channelId,
+    address,
+    token,
+    expiration,
+  }: {
+    pageToken: string;
+    channelId: string;
+    address: string;
+    token?: string;
+    expiration?: number;
+  }): Promise<drive_v3.Schema$Channel> => {
+    const response = await call(() =>
+      drive.changes.watch({
+        pageToken,
+        supportsAllDrives: true,
+        includeItemsFromAllDrives: true,
+        includeRemoved: true,
+        requestBody: {
+          id: channelId,
+          type: "web_hook",
+          address,
+          token,
+          expiration: expiration ? String(expiration) : undefined,
+        },
+      }),
+    );
+    return response.data as drive_v3.Schema$Channel;
+  };
+
+  // Stop a webhook channel
+  const stopChannel = async ({channelId, resourceId}: {channelId: string; resourceId: string}): Promise<void> => {
+    await call(() =>
+      drive.channels.stop({
+        requestBody: {
+          id: channelId,
+          resourceId,
+        },
+      }),
+    );
+  };
+
+  // List changes since page token
+  const listChanges = async ({
+    pageToken,
+    pageSize = 100,
+  }: {
+    pageToken: string;
+    pageSize?: number;
+  }): Promise<{
+    changes: drive_v3.Schema$Change[];
+    nextPageToken?: string;
+    newStartPageToken?: string;
+  }> => {
+    const response = await call(() =>
+      drive.changes.list({
+        pageToken,
+        pageSize,
+        supportsAllDrives: true,
+        includeItemsFromAllDrives: true,
+        includeRemoved: true,
+        fields:
+          "nextPageToken,newStartPageToken,changes(fileId,removed,changeType,file(id,name,mimeType,description,createdTime,modifiedTime,size,webViewLink,iconLink,thumbnailLink,parents,driveId,owners,lastModifyingUser,trashed,ownedByMe,shared))",
+      }),
+    );
+    return {
+      changes: (response.data.changes || []) as drive_v3.Schema$Change[],
+      nextPageToken: response.data.nextPageToken || undefined,
+      newStartPageToken: response.data.newStartPageToken || undefined,
+    };
+  };
+
   // Delete a permission (unshare) from a file, folder, or drive
   const deletePermission = async ({fileId, permissionId}: {fileId: string; permissionId: string}): Promise<void> => {
     await call(() =>
@@ -405,6 +492,10 @@ export const createGoogleDriveApi = (account: IntegrationAccount) => {
     listPermissions,
     createPermission,
     deletePermission,
+    getStartPageToken,
+    watchChanges,
+    stopChannel,
+    listChanges,
     createFolder,
     uploadFile,
   };
